@@ -37,3 +37,10 @@ mkdir "$tmp/home"
   ' | tr -d '\r'
 } > "$tmp/install.txt"
 "${freeze[@]}" "$tmp/install.txt" -o docs/install.svg < /dev/null
+
+# ./uninstall.sh: removing what the install above put in that home.
+{
+  echo '$ ./uninstall.sh'
+  HOME=$tmp/home bash ./uninstall.sh
+} > "$tmp/uninstall.txt"
+"${freeze[@]}" "$tmp/uninstall.txt" -o docs/uninstall.svg < /dev/null

@@ -62,6 +62,8 @@ It tells you why it barked, or why it never does and whether you should lower th
 ./uninstall.sh
 ```
 
+![./uninstall.sh output: swapdog went to live on a farm upstate. Remember to restart once in a while.](docs/uninstall.svg)
+
 Then restart. Not for swapdog, it's gone. For you.
 
 ## Tweaking
