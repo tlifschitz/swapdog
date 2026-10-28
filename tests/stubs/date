@@ -1,2 +1,6 @@
 #!/bin/bash
-[[ $1 == "+%F" ]] && echo "$FAKE_TODAY" || /bin/date "$@"
+case "$1" in
+  +%F) echo "$FAKE_TODAY" ;;
+  +%s) echo "$FAKE_NOW" ;;
+  *) /bin/date "$@" ;;
+esac

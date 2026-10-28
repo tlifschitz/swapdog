@@ -1,13 +1,13 @@
 #!/bin/bash
-# swapdog: nudges you to restart your Mac once swap or memory pressure has stayed
-# high for 4 hours of accumulated awake time. launchd runs it every 10 minutes
-# (see com.github.tlifschitz.swapdog.plist).
+# swapdog: asks you to restart your Mac when memory pressure has been high for too
+# long, or when it has simply been up for too many days. launchd runs it every 10
+# minutes (see com.github.tlifschitz.swapdog.plist).
 set -euo pipefail
 
-INTERVAL=600                          # must match StartInterval in the plist
-HIGH_MB=6144                          # count time while swap is above 6 GB...
-LOW_MB=5120                           # ...and reset once it drops below 5 GB (hysteresis)
-LIMIT_SECS=${LIMIT_SECS:-14400}       # 4 hours
+INTERVAL=600                                          # must match StartInterval in the plist
+PRESSURE_LIMIT_SECS=$(( ${SWAPDOG_PRESSURE_LIMIT_MIN:-60} * 60 ))
+UPTIME_DAYS=${SWAPDOG_UPTIME_DAYS:-14}
+UPTIME_REPEAT_DAYS=${SWAPDOG_UPTIME_REPEAT_DAYS:-7}
 STATE_DIR=${STATE_DIR:-$HOME/.local/state/swapdog}
 STATE=$STATE_DIR/state
 ICON=${ICON:-$HOME/.local/share/swapdog/swapdog.png}
@@ -15,47 +15,56 @@ ICON=${ICON:-$HOME/.local/share/swapdog/swapdog.png}
 mkdir -p "$STATE_DIR"
 
 boot=$(sysctl -n kern.boottime | sed -E 's/^\{ sec = ([0-9]+).*/\1/')
-swap_mb=$(sysctl -n vm.swapusage | awk '{
-  for (i = 1; i <= NF; i++) if ($i == "used") {
-    v = $(i + 2); unit = substr(v, length(v)); v = substr(v, 1, length(v) - 1)
-    if (unit == "G") v *= 1024
-    printf "%d", v
-  }
-}')
 pressure=$(sysctl -n kern.memorystatus_vm_pressure_level)  # 1 normal, 2 warning, 4 critical
+uptime_days=$(( ($(date +%s) - boot) / 86400 ))
+today=$(date +%F)
 
 acc=0
 last_boot=$boot
-last_notified=""
+last_pressure_bark=""
+last_uptime_bark_days=""
 [[ -f $STATE ]] && source "$STATE"
 
 # A restart wipes the slate clean.
 if [[ $last_boot != "$boot" ]]; then
   acc=0
-  last_notified=""
+  last_pressure_bark=""
+  last_uptime_bark_days=""
 fi
 
-# Add a fixed interval (not wall-clock time since the last run) so only awake time
-# counts: launchd doesn't run the script while the Mac is asleep.
-if (( swap_mb > HIGH_MB || pressure >= 2 )); then
+# Leaky bucket: high pressure fills it, normal pressure drains it at the same pace.
+# A fixed interval per run (not wall-clock time) means only awake time counts:
+# launchd doesn't run the script while the Mac is asleep.
+if (( pressure >= 2 )); then
   acc=$((acc + INTERVAL))
-elif (( swap_mb < LOW_MB )); then
-  acc=0
+elif (( acc > 0 )); then
+  acc=$((acc - INTERVAL))
 fi
 
-today=$(date +%F)
-bark=false
-if (( acc >= LIMIT_SECS )) && [[ $last_notified != "$today" ]]; then
-  bark=true
-  last_notified=$today
+# The uptime bark is the gentle one: only when memory is fine right now, never on a
+# day the pressure bark already went off, and then once every few days.
+uptime_bark_due() {
+  (( pressure == 1 && uptime_days >= UPTIME_DAYS )) || return 1
+  [[ $last_pressure_bark != "$today" ]] || return 1
+  [[ -z $last_uptime_bark_days ]] || (( uptime_days >= last_uptime_bark_days + UPTIME_REPEAT_DAYS ))
+}
+
+message=""
+if (( acc >= PRESSURE_LIMIT_SECS )) && [[ $last_pressure_bark != "$today" ]]; then
+  message="Woof! Your Mac has been short on memory for $((acc / 60)) minutes. Close a few things or restart. Good human."
+  last_pressure_bark=$today
+elif uptime_bark_due; then
+  message="Woof! Memory looks fine, but it's been $uptime_days days since your last restart. A fresh start and a walk in the park would do us both good."
+  last_uptime_bark_days=$uptime_days
 fi
 
 # Save before barking: the dialog blocks until it's answered (or gives up after an
 # hour), and launchd skips runs while this one is still going.
-printf 'acc=%d\nlast_boot=%s\nlast_notified=%s\n' "$acc" "$boot" "$last_notified" > "$STATE"
+printf 'acc=%d\nlast_boot=%s\nlast_pressure_bark=%s\nlast_uptime_bark_days=%s\n' \
+  "$acc" "$boot" "$last_pressure_bark" "$last_uptime_bark_days" > "$STATE"
 
-if $bark; then
-  osascript - "Woof! Swap has been at $((swap_mb / 1024)) GB for $((acc / 3600)) h. Save your stuff and restart. Good human." "$ICON" <<'EOF'
+if [[ -n $message ]]; then
+  osascript - "$message" "$ICON" <<'EOF'
 on run argv
   set {message, iconPath} to argv
   try

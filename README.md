@@ -6,23 +6,27 @@ You know who you are. 47 Chrome tabs, three half-written documents, a terminal w
 
 Your Mac has been quietly filling up its swap file. First the spinning beach ball drops by for a visit. Then it moves in. Then one day macOS informs you that *your system has run out of application memory* and asks which app you'd like to sacrifice.
 
-swapdog keeps an eye on it. When things have been bad for long enough, it barks. Once a day, tops. It's a good dog, not an annoying one.
+swapdog keeps an eye on it. When something's off, it barks. It's a good dog, not an annoying one.
 
 ## What it sniffs
 
-Every 10 minutes, swapdog checks:
+Every 10 minutes, swapdog checks two things.
 
-- **Swap usage**: above **6 GB** is suspicious.
-- **Memory pressure**: *warning* or *critical* is suspicious, whatever the swap says.
+### Memory pressure
 
-While either one is suspicious, it adds 10 minutes to its counter. Once the counter reaches **4 hours**, a dog shows up in the middle of your screen asking you to save your stuff and restart. You can say **Later** (it'll be back tomorrow) or **Restart now** (it'll be so proud of you).
+The same green / yellow / red traffic light you see in Activity Monitor. The size of your swap file doesn't matter much: what matters is whether your Mac is struggling *right now*.
+
+While the light is yellow or red, swapdog fills a bucket by 10 minutes per check. While it's green, the bucket drains at the same pace, so a short spike doesn't erase an afternoon of suffering. Once the bucket holds **1 hour**, a dog shows up in the middle of your screen asking you to close a few things or restart. Once a day, tops.
 
 It only counts time your Mac is awake, so working in 20-minute bursts still adds up (nice try).
 
-The counter goes back to zero when:
+### Days since your last restart
 
-- you restart (good human 🦴), or
-- swap drops below **5 GB** with normal pressure. The 1 GB gap stops it from flip-flopping around the threshold.
+Even when memory looks fine, after **14 days** without a restart swapdog will gently suggest a fresh start and a walk in the park. If you say **Later**, it asks again a week later. It never does this while memory is struggling, or on a day it already barked about memory.
+
+### What you can answer
+
+**Later** (it'll be back) or **Restart now** (it'll be so proud of you). Either way, restarting resets everything (good human 🦴).
 
 ## Install
 
@@ -42,7 +46,7 @@ The first time you click **Restart now**, macOS asks whether swapdog may control
 cat ~/.local/state/swapdog/state
 ```
 
-`acc` is how many seconds of suspicious behavior it has seen so far.
+`acc` is how full the memory-pressure bucket is, in seconds.
 
 ## Uninstall
 
@@ -54,7 +58,13 @@ Then restart. Not for swapdog, it's gone. For you.
 
 ## Tweaking
 
-The thresholds live at the top of `swapdog.sh`. 6 GB made sense on a 16 GB Mac; adjust to taste and run `./install.sh` again.
+Edit `EnvironmentVariables` in `com.github.tlifschitz.swapdog.plist` and run `./install.sh` again:
+
+| Variable | Default | What it means |
+|---|---|---|
+| `SWAPDOG_PRESSURE_LIMIT_MIN` | `60` | Minutes of yellow or red before it barks |
+| `SWAPDOG_UPTIME_DAYS` | `14` | Days without a restart before it suggests one |
+| `SWAPDOG_UPTIME_REPEAT_DAYS` | `7` | Days between uptime reminders if you say Later |
 
 ## Tests
 

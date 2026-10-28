@@ -9,6 +9,15 @@
 		<string>/bin/bash</string>
 		<string>__HOME__/.local/bin/swapdog</string>
 	</array>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>SWAPDOG_PRESSURE_LIMIT_MIN</key>
+		<string>60</string>
+		<key>SWAPDOG_UPTIME_DAYS</key>
+		<string>14</string>
+		<key>SWAPDOG_UPTIME_REPEAT_DAYS</key>
+		<string>7</string>
+	</dict>
 	<key>StartInterval</key>
 	<integer>600</integer>
 	<key>RunAtLoad</key>
