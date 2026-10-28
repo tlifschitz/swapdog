@@ -155,6 +155,24 @@ PLIST=$STATE_DIR/swapdog.plist status | grep -q "of 20 minutes"; check "limit fr
 echo "unknown arguments are rejected"
 bash "$SCRIPT" bogus 2> /dev/null; check "exit code 2" $? 2
 
+install() {  # install <answer>, into a fake home with ~/.local/bin off the PATH
+  echo "$1" | HOME=$FAKE_HOME SHELL=/bin/zsh PATH=$T/stubs:/usr/bin:/bin bash "$ROOT/install.sh" > /dev/null
+}
+path_lines() { grep -c '.local/bin' "$FAKE_HOME/.zshrc" 2>/dev/null; }
+
+echo "install offers to add ~/.local/bin to the PATH"
+FAKE_HOME=$(mktemp -d); install n
+check "answering no leaves .zshrc alone" "$(path_lines)" ""
+install y
+check "answering yes adds it" "$(path_lines)" 1
+install y
+check "installing again doesn't duplicate it" "$(path_lines)" 1
+FAKE_HOME=$(mktemp -d)
+echo y | HOME=$FAKE_HOME SHELL=/bin/zsh PATH=$FAKE_HOME/.local/bin:$T/stubs:/usr/bin:/bin bash "$ROOT/install.sh" > /dev/null
+check "doesn't ask when it's already on the PATH" "$(path_lines)" ""
+check "installs the script" "$([[ -x $FAKE_HOME/.local/bin/swapdog ]] && echo yes)" yes
+check "renders the plist" "$(grep -c "$FAKE_HOME/.local/bin/swapdog" "$FAKE_HOME/Library/LaunchAgents/com.github.tlifschitz.swapdog.plist")" 1
+
 echo "plist template renders to a valid plist"
 rendered=$(mktemp)
 sed "s|__HOME__|/Users/someone|g" "$ROOT/com.github.tlifschitz.swapdog.plist" > "$rendered"

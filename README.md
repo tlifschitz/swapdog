@@ -40,7 +40,7 @@ cd swapdog
 ./install.sh
 ```
 
-That puts the script in `~/.local/bin/swapdog`, its face in `~/.local/share/swapdog/`, its notes in `~/.local/state/swapdog/` and a LaunchAgent in `~/Library/LaunchAgents/`.
+That puts the script in `~/.local/bin/swapdog`, its face in `~/.local/share/swapdog/`, its notes in `~/.local/state/swapdog/` and a LaunchAgent in `~/Library/LaunchAgents/`. If `~/.local/bin` isn't on your PATH yet, it offers to add it to your `~/.zshrc` (or `~/.bash_profile`).
 
 The first time you click **Restart now**, macOS asks whether swapdog may control **System Events**. Say yes: that's how it politely asks your Mac to restart, giving your apps a chance to save your work.
 
