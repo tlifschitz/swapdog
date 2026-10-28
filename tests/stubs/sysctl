@@ -1,0 +1,6 @@
+#!/bin/bash
+case "$2" in
+  kern.boottime) echo "{ sec = $FAKE_BOOT, usec = 0 } Mon Oct  5 11:00:00 2026" ;;
+  vm.swapusage) echo "total = 9216.00M  used = $FAKE_SWAP  free = 100.00M  (encrypted)" ;;
+  kern.memorystatus_vm_pressure_level) echo "$FAKE_PRESSURE" ;;
+esac

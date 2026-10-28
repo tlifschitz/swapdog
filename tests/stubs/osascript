@@ -1,0 +1,5 @@
+#!/bin/bash
+# Records the dialog arguments and a snapshot of the state file at the moment the
+# dialog would be on screen.
+echo "$*" >> "$NOTIFY_LOG"
+cp "$STATE_DIR/state" "$STATE_SEEN_BY_DIALOG" 2>/dev/null || true
