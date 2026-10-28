@@ -42,6 +42,8 @@ cd swapdog
 
 That puts the script in `~/.local/bin/swapdog`, its face in `~/.local/share/swapdog/`, its notes in `~/.local/state/swapdog/` and a LaunchAgent in `~/Library/LaunchAgents/`. If `~/.local/bin` isn't on your PATH yet, it offers to add it to your `~/.zshrc` (or `~/.bash_profile`).
 
+![./install.sh output: swapdog is on duty, then it offers to add ~/.local/bin to ~/.zshrc so swapdog status works](docs/install.svg)
+
 The first time you click **Restart now**, macOS asks whether swapdog may control **System Events**. Say yes: that's how it politely asks your Mac to restart, giving your apps a chance to save your work.
 
 ### Check what it's thinking
@@ -50,15 +52,7 @@ The first time you click **Restart now**, macOS asks whether swapdog may control
 swapdog status
 ```
 
-```
-🐶 swapdog
-
-Memory pressure: green right now, bucket at 0 of 60 minutes
-Uptime:          22 days, next restart reminder at 29 days
-Watched:         168 hours awake, 0 minutes of it in yellow or red, bucket peaked at 0 minutes
-
-Your Mac hasn't struggled with memory all week. Good machine, nothing to tune.
-```
+![swapdog status output: memory pressure green, 22 days of uptime, a week watched without yellow or red. Your Mac hasn't struggled with memory all week.](docs/status.svg)
 
 It tells you why it barked, or why it never does and whether you should lower the limit. Behind it is a diary of the last 7 days, one line per check, in `~/.local/state/swapdog/history`.
 
@@ -87,6 +81,8 @@ bash tests/run_tests.sh
 ```
 
 `sysctl`, `date` and `osascript` are faked, so the tests don't care how many tabs you have open right now. They also run on every push in CI on macOS.
+
+The terminal screenshots come from `docs/screenshots.sh`, using the same fakes and [freeze](https://github.com/charmbracelet/freeze). Run it again whenever the output changes.
 
 ## Credits
 

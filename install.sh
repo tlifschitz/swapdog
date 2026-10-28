@@ -37,7 +37,7 @@ if [[ -f $rc ]] && grep -qF "$line" "$rc"; then
 fi
 
 answer=""
-read -r -p "~/.local/bin isn't on your PATH, so 'swapdog status' won't be found. Add it to $rc? [y/N] " answer || true
+read -r -p "~/.local/bin isn't on your PATH. Add it to ~/${rc#"$HOME"/} so 'swapdog status' works? [y/N] " answer || true
 if [[ $answer == [yY]* ]]; then
   printf '\n# Added by swapdog\n%s\n' "$line" >> "$rc"
   echo "Done. Open a new terminal and ask it how things are going with: swapdog status"
