@@ -2,6 +2,8 @@
 
 *A good boy that watches your Mac's memory so you don't have to.*
 
+<img src="docs/dialog.png" alt="swapdog dialog: Woof! Memory looks fine, but it's been 22 days since your last restart. A fresh start and a walk in the park would do us both good." width="418">
+
 You know who you are. 47 Chrome tabs, three half-written documents, a terminal with something running that you're "definitely getting back to", and an uptime measured in lunar cycles. You haven't restarted since the last OS update forced you to, and you resent it.
 
 Your Mac has been quietly filling up its swap file. First the spinning beach ball drops by for a visit. Then it moves in. Then one day macOS informs you that *your system has run out of application memory* and asks which app you'd like to sacrifice.
