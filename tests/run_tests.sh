@@ -9,7 +9,7 @@ pass=0; fail=0
 
 reset_env() {
   export STATE_DIR=$(mktemp -d) NOTIFY_LOG=$(mktemp) STATE_SEEN_BY_DIALOG=$(mktemp)
-  export FAKE_BOOT=1000 FAKE_PRESSURE=1 FAKE_TODAY=2026-10-27 ICON=/fake/swapdog.png
+  export FAKE_BOOT=1000 FAKE_PRESSURE=1 FAKE_TODAY=2026-10-27 ICON=/fake/swapdog.png PLIST=/nonexistent
   unset SWAPDOG_PRESSURE_LIMIT_MIN SWAPDOG_UPTIME_DAYS SWAPDOG_UPTIME_REPEAT_DAYS
   up 1
 }
@@ -105,6 +105,47 @@ check "three lines" "$(wc -l < "$STATE_DIR/history" | tr -d ' ')" 3
 check "last line has pressure and acc" "$(tail -1 "$STATE_DIR/history" | cut -d' ' -f3-)" "pressure=1 acc=600"
 HISTORY_LINES=2 run
 check "trimmed to the limit" "$(wc -l < "$STATE_DIR/history" | tr -d ' ')" 2
+
+fake_history() {  # fake_history <green checks> <yellow checks>, yellow ones peaking at 30 min
+  for ((k = 0; k < $1; k++)); do echo "2026-10-27 10:00 pressure=1 acc=0"; done > "$STATE_DIR/history"
+  for ((k = 1; k <= $2; k++)); do echo "2026-10-27 11:00 pressure=2 acc=$(( (k % 3 + 1) * 600 ))"; done >> "$STATE_DIR/history"
+}
+status() { bash "$SCRIPT" status; }
+
+echo "status doesn't change anything"
+reset_env; FAKE_PRESSURE=2; run
+before=$(cat "$STATE_DIR/state" "$STATE_DIR/history")
+status > /dev/null
+check "state and history untouched" "$(cat "$STATE_DIR/state" "$STATE_DIR/history")" "$before"
+
+echo "status shows the current readings"
+reset_env; up 22; FAKE_PRESSURE=2; run 2
+out=$(status)
+grep -q "yellow right now, bucket at 20 of 60 minutes" <<< "$out"; check "pressure and bucket" $? 0
+grep -q "22 days, restart reminder due once memory pressure is green" <<< "$out"; check "overdue uptime reminder" $? 0
+FAKE_PRESSURE=1; FAKE_TODAY=2026-10-28; run
+status | grep -q "22 days, next restart reminder at 29 days"; check "next uptime reminder" $? 0
+
+echo "status verdicts"
+reset_env; run
+status | grep -q "Only 0 awake hours of data so far"; check "too little data" $? 0
+reset_env; run; fake_history 200 0
+status | grep -q "hasn't struggled with memory all week"; check "all green" $? 0
+reset_env; run; fake_history 200 12
+out=$(status)
+grep -q "120 minutes in yellow or red" <<< "$out"; check "counts yellow minutes" $? 0
+grep -q "never got past 30 of 60 minutes" <<< "$out"; check "some yellow, no bark" $? 0
+reset_env; FAKE_PRESSURE=2; run 6
+status | grep -q "It barked on 2026-10-27"; check "explains a bark" $? 0
+
+echo "status reads settings from the installed plist"
+reset_env; run
+sed "s|__HOME__|/Users/someone|; s|<string>60</string>|<string>20</string>|" \
+  "$ROOT/com.github.tlifschitz.swapdog.plist" > "$STATE_DIR/swapdog.plist"
+PLIST=$STATE_DIR/swapdog.plist status | grep -q "of 20 minutes"; check "limit from the plist" $? 0
+
+echo "unknown arguments are rejected"
+bash "$SCRIPT" bogus 2> /dev/null; check "exit code 2" $? 2
 
 echo "plist template renders to a valid plist"
 rendered=$(mktemp)

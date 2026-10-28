@@ -1,13 +1,26 @@
 #!/bin/bash
 # swapdog: asks you to restart your Mac when memory pressure has been high for too
 # long, or when it has simply been up for too many days. launchd runs it every 10
-# minutes (see com.github.tlifschitz.swapdog.plist).
+# minutes (see com.github.tlifschitz.swapdog.plist). `swapdog status` explains what
+# it has seen without changing anything.
 set -euo pipefail
 
+PLIST=${PLIST:-$HOME/Library/LaunchAgents/com.github.tlifschitz.swapdog.plist}
+
+# launchd passes the settings as environment variables; from a terminal they're read
+# from the installed plist instead, so `swapdog status` sees the same values.
+setting() {  # setting <name> <default>
+  local value=${!1:-}
+  if [[ -z $value && -f $PLIST ]]; then
+    value=$(/usr/libexec/PlistBuddy -c "Print :EnvironmentVariables:$1" "$PLIST" 2>/dev/null) || true
+  fi
+  echo "${value:-$2}"
+}
+
 INTERVAL=600                                          # must match StartInterval in the plist
-PRESSURE_LIMIT_SECS=$(( ${SWAPDOG_PRESSURE_LIMIT_MIN:-60} * 60 ))
-UPTIME_DAYS=${SWAPDOG_UPTIME_DAYS:-14}
-UPTIME_REPEAT_DAYS=${SWAPDOG_UPTIME_REPEAT_DAYS:-7}
+PRESSURE_LIMIT_SECS=$(( $(setting SWAPDOG_PRESSURE_LIMIT_MIN 60) * 60 ))
+UPTIME_DAYS=$(setting SWAPDOG_UPTIME_DAYS 14)
+UPTIME_REPEAT_DAYS=$(setting SWAPDOG_UPTIME_REPEAT_DAYS 7)
 STATE_DIR=${STATE_DIR:-$HOME/.local/state/swapdog}
 STATE=$STATE_DIR/state
 HISTORY=$STATE_DIR/history
@@ -33,6 +46,48 @@ if [[ $last_boot != "$boot" ]]; then
   last_pressure_bark=""
   last_uptime_bark_days=""
 fi
+
+status() {
+  local -a colors=([1]=green [2]=yellow [4]=red)
+  local checks=0 high=0 peak=0
+  if [[ -f $HISTORY ]]; then
+    checks=$(wc -l < "$HISTORY" | tr -d ' ')
+    high=$(grep -vc pressure=1 "$HISTORY" || true)
+    peak=$(sed -E 's/.*acc=//' "$HISTORY" | sort -n | tail -1)
+  fi
+  local limit_min=$((PRESSURE_LIMIT_SECS / 60)) high_min=$((high * 10)) peak_min=$((peak / 60))
+  local next_uptime=$UPTIME_DAYS
+  [[ -z $last_uptime_bark_days ]] || next_uptime=$((last_uptime_bark_days + UPTIME_REPEAT_DAYS))
+
+  echo "🐶 swapdog"
+  echo
+  echo "Memory pressure: ${colors[$pressure]:-unknown} right now, bucket at $((acc / 60)) of $limit_min minutes"
+  if (( uptime_days >= next_uptime )); then
+    echo "Uptime:          $uptime_days days, restart reminder due once memory pressure is green"
+  else
+    echo "Uptime:          $uptime_days days, next restart reminder at $next_uptime days"
+  fi
+  echo "Last week:       $high_min minutes in yellow or red over $((checks / 6)) awake hours, bucket peaked at $peak_min minutes"
+  echo
+
+  if [[ -n $last_pressure_bark ]]; then
+    echo "It barked on $last_pressure_bark because memory pressure stayed high for $limit_min minutes."
+    echo "See how the bucket filled up with: grep -v pressure=1 $HISTORY"
+  elif (( checks < 144 )); then
+    echo "Only $((checks / 6)) awake hours of data so far. Ask again in a few days."
+  elif (( high == 0 )); then
+    echo "Your Mac hasn't struggled with memory all week. Good machine, nothing to tune."
+  else
+    echo "It saw some yellow or red, but the bucket never got past $peak_min of $limit_min minutes."
+    echo "If your Mac felt slow at those times, lower SWAPDOG_PRESSURE_LIMIT_MIN in the plist."
+  fi
+}
+
+case ${1:-} in
+  "") ;;
+  status) status; exit 0 ;;
+  *) echo "usage: swapdog [status]" >&2; exit 2 ;;
+esac
 
 # Leaky bucket: high pressure fills it, normal pressure drains it at the same pace.
 # A fixed interval per run (not wall-clock time) means only awake time counts:

@@ -47,23 +47,20 @@ The first time you click **Restart now**, macOS asks whether swapdog may control
 ### Check what it's thinking
 
 ```sh
-cat ~/.local/state/swapdog/state
+swapdog status
 ```
 
-`acc` is how full the memory-pressure bucket is, in seconds.
+```
+🐶 swapdog
 
-It also keeps a diary of the last 7 days, one line per check:
+Memory pressure: green right now, bucket at 0 of 60 minutes
+Uptime:          22 days, next restart reminder at 29 days
+Last week:       0 minutes in yellow or red over 168 awake hours, bucket peaked at 0 minutes
 
-```sh
-tail ~/.local/state/swapdog/history
-# 2026-10-28 10:00 pressure=2 acc=600
+Your Mac hasn't struggled with memory all week. Good machine, nothing to tune.
 ```
 
-Wondering whether it will ever bark? Count how many minutes your Mac spent in yellow or red this week:
-
-```sh
-echo $(( $(grep -vc pressure=1 ~/.local/state/swapdog/history) * 10 )) minutes
-```
+It tells you why it barked, or why it never does and whether you should lower the limit. Behind it is a diary of the last 7 days, one line per check, in `~/.local/state/swapdog/history`.
 
 ## Uninstall
 
