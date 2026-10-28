@@ -47,6 +47,15 @@ if [[ $last_boot != "$boot" ]]; then
   last_uptime_bark_days=""
 fi
 
+duration() {  # duration <minutes>
+  local m=$1
+  if (( m == 1 )); then echo "1 minute"
+  elif (( m < 60 )); then echo "$m minutes"
+  elif (( m < 120 )); then echo "1 hour"
+  else echo "$((m / 60)) hours"
+  fi
+}
+
 status() {
   local -a colors=([1]=green [2]=yellow [4]=red)
   local checks=0 high=0 peak=0
@@ -62,19 +71,24 @@ status() {
   echo "🐶 swapdog"
   echo
   echo "Memory pressure: ${colors[$pressure]:-unknown} right now, bucket at $((acc / 60)) of $limit_min minutes"
-  if (( uptime_days >= next_uptime )); then
+  if (( uptime_days == 0 )); then
+    echo "Uptime:          just restarted, $(duration $(( ($(date +%s) - boot) / 60 ))) ago. Good human 🦴"
+  elif (( uptime_days >= next_uptime )); then
     echo "Uptime:          $uptime_days days, restart reminder due once memory pressure is green"
   else
     echo "Uptime:          $uptime_days days, next restart reminder at $next_uptime days"
   fi
-  echo "Last week:       $high_min minutes in yellow or red over $((checks / 6)) awake hours, bucket peaked at $peak_min minutes"
+  echo "Watched:         $(duration $((checks * 10))) awake, $(duration "$high_min") of it in yellow or red, bucket peaked at $(duration "$peak_min")"
   echo
 
   if [[ -n $last_pressure_bark ]]; then
     echo "It barked on $last_pressure_bark because memory pressure stayed high for $limit_min minutes."
     echo "See how the bucket filled up with: grep -v pressure=1 $HISTORY"
+  elif (( checks == 0 )); then
+    echo "swapdog hasn't sniffed anything yet. It checks every 10 minutes."
   elif (( checks < 144 )); then
-    echo "Only $((checks / 6)) awake hours of data so far. Ask again in a few days."
+    echo "swapdog is new here: it started watching on $(head -1 "$HISTORY" 2>/dev/null | cut -d' ' -f1-2)."
+    echo "Give it a day of use before judging your Mac."
   elif (( high == 0 )); then
     echo "Your Mac hasn't struggled with memory all week. Good machine, nothing to tune."
   else

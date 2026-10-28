@@ -126,14 +126,22 @@ grep -q "22 days, restart reminder due once memory pressure is green" <<< "$out"
 FAKE_PRESSURE=1; FAKE_TODAY=2026-10-28; run
 status | grep -q "22 days, next restart reminder at 29 days"; check "next uptime reminder" $? 0
 
+echo "status right after a restart"
+reset_env; FAKE_NOW=$((FAKE_BOOT + 5400)); run
+status | grep -q "just restarted, 1 hour ago. Good human"; check "uptime in hours" $? 0
+
 echo "status verdicts"
-reset_env; run
-status | grep -q "Only 0 awake hours of data so far"; check "too little data" $? 0
+reset_env
+status | grep -q "hasn't sniffed anything yet"; check "no checks yet" $? 0
+run 2
+out=$(status)
+grep -q "Watched:         20 minutes awake, 0 minutes of it" <<< "$out"; check "watched time in minutes" $? 0
+grep -q "swapdog is new here: it started watching on 20" <<< "$out"; check "just installed" $? 0
 reset_env; run; fake_history 200 0
 status | grep -q "hasn't struggled with memory all week"; check "all green" $? 0
 reset_env; run; fake_history 200 12
 out=$(status)
-grep -q "120 minutes in yellow or red" <<< "$out"; check "counts yellow minutes" $? 0
+grep -q "Watched:         35 hours awake, 2 hours of it in yellow or red" <<< "$out"; check "counts yellow time" $? 0
 grep -q "never got past 30 of 60 minutes" <<< "$out"; check "some yellow, no bark" $? 0
 reset_env; FAKE_PRESSURE=2; run 6
 status | grep -q "It barked on 2026-10-27"; check "explains a bark" $? 0

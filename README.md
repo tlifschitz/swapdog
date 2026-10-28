@@ -55,7 +55,7 @@ swapdog status
 
 Memory pressure: green right now, bucket at 0 of 60 minutes
 Uptime:          22 days, next restart reminder at 29 days
-Last week:       0 minutes in yellow or red over 168 awake hours, bucket peaked at 0 minutes
+Watched:         168 hours awake, 0 minutes of it in yellow or red, bucket peaked at 0 minutes
 
 Your Mac hasn't struggled with memory all week. Good machine, nothing to tune.
 ```
