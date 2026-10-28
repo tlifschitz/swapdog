@@ -52,6 +52,19 @@ cat ~/.local/state/swapdog/state
 
 `acc` is how full the memory-pressure bucket is, in seconds.
 
+It also keeps a diary of the last 7 days, one line per check:
+
+```sh
+tail ~/.local/state/swapdog/history
+# 2026-10-28 10:00 pressure=2 acc=600
+```
+
+Wondering whether it will ever bark? Count how many minutes your Mac spent in yellow or red this week:
+
+```sh
+echo $(( $(grep -vc pressure=1 ~/.local/state/swapdog/history) * 10 )) minutes
+```
+
 ## Uninstall
 
 ```sh

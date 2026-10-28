@@ -10,6 +10,8 @@ UPTIME_DAYS=${SWAPDOG_UPTIME_DAYS:-14}
 UPTIME_REPEAT_DAYS=${SWAPDOG_UPTIME_REPEAT_DAYS:-7}
 STATE_DIR=${STATE_DIR:-$HOME/.local/state/swapdog}
 STATE=$STATE_DIR/state
+HISTORY=$STATE_DIR/history
+HISTORY_LINES=${HISTORY_LINES:-1008}                  # a week of 10-minute checks
 ICON=${ICON:-$HOME/.local/share/swapdog/swapdog.png}
 
 mkdir -p "$STATE_DIR"
@@ -62,6 +64,8 @@ fi
 # hour), and launchd skips runs while this one is still going.
 printf 'acc=%d\nlast_boot=%s\nlast_pressure_bark=%s\nlast_uptime_bark_days=%s\n' \
   "$acc" "$boot" "$last_pressure_bark" "$last_uptime_bark_days" > "$STATE"
+echo "$(date '+%F %R') pressure=$pressure acc=$acc" >> "$HISTORY"
+tail -n "$HISTORY_LINES" "$HISTORY" > "$HISTORY.tmp" && mv "$HISTORY.tmp" "$HISTORY"
 
 if [[ -n $message ]]; then
   osascript - "$message" "$ICON" <<'EOF'

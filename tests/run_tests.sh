@@ -99,6 +99,13 @@ check "pressure limit of 20 min" "$(barks)" 1
 reset_env; export SWAPDOG_UPTIME_DAYS=3 SWAPDOG_UPTIME_REPEAT_DAYS=1; up 3; run; up 4; run
 check "uptime of 3 days, repeating daily" "$(uptime_barks)" 2
 
+echo "history keeps one line per check, up to a limit"
+reset_env; FAKE_PRESSURE=2; run 2; FAKE_PRESSURE=1; run
+check "three lines" "$(wc -l < "$STATE_DIR/history" | tr -d ' ')" 3
+check "last line has pressure and acc" "$(tail -1 "$STATE_DIR/history" | cut -d' ' -f3-)" "pressure=1 acc=600"
+HISTORY_LINES=2 run
+check "trimmed to the limit" "$(wc -l < "$STATE_DIR/history" | tr -d ' ')" 2
+
 echo "plist template renders to a valid plist"
 rendered=$(mktemp)
 sed "s|__HOME__|/Users/someone|g" "$ROOT/com.github.tlifschitz.swapdog.plist" > "$rendered"
